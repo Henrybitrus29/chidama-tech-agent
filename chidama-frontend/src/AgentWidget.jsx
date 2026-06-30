@@ -3,6 +3,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import React, { useState, useEffect, useRef } from 'react';
 export default function AgentWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
