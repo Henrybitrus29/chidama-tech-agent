@@ -1,1 +1,29 @@
 @import "tailwindcss";
+@import "tailwindcss";
+
+/* --- CHIDAMA TECH CUSTOM WIDGET STYLES --- */
+
+/* 1. Make the main widget bigger */
+/* (Note: if your main container class in React is named something else, replace .chat-window with that name) */
+.chat-window { 
+  width: 450px !important;       
+  height: 650px !important;      
+  max-width: 90vw;    
+  max-height: 85vh;
+}
+
+/* 2. Tame Markdown Tables so they only scroll internally */
+.chat-message table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  border-collapse: collapse;
+}
+
+/* 3. Ensure long text doesn't break out of the bubble */
+.chat-message, .chat-bubble {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
