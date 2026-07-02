@@ -1,15 +1,35 @@
 @import "tailwindcss";
-@import "tailwindcss";
+
+/* --- DEFAULT REACT STYLES --- */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
 
 /* --- CHIDAMA TECH CUSTOM WIDGET STYLES --- */
 
-/* 1. Make the main widget bigger */
-/* (Note: if your main container class in React is named something else, replace .chat-window with that name) */
+/* 1. Fully Responsive Main Widget Container */
 .chat-window { 
-  width: 450px !important;       
-  height: 650px !important;      
-  max-width: 90vw;    
-  max-height: 85vh;
+  /* Fluid sizing for mobile and tablets */
+  width: 90vw !important;       
+  height: 80vh !important;
+  
+  /* Caps the size so it doesn't get massive on laptops/desktops */
+  max-width: 450px !important;    
+  max-height: 700px !important;
+  
+  /* Flexbox is MANDATORY here so the inside messages can scroll */
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 /* 2. Tame Markdown Tables so they only scroll internally */
