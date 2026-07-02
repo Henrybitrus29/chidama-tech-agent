@@ -7,7 +7,7 @@ from pymongo import MongoClient
 
 from langchain_groq import ChatGroq
 from langchain_core.tools import tool
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
@@ -52,7 +52,7 @@ def fetch_manifest(session_id: str):
 # ==========================================
 # 2. Define the Agent's Memory State
 # ==========================================
-# FIX 1: Reverted to the exact original structure to prevent LangGraph 500 validation errors
+# Must match exactly what the frontend sends: {"messages": [...]}
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
@@ -117,7 +117,7 @@ def consult_ai_dept(query: str) -> str:
      * Live Agentic AI Development: Building and embedding interactive, tool-using AI assistants directly into client websites. These agents do not just chat; they can execute background Python scripts, pull real-time data, and trigger n8n workflows on command.
      * Custom Model Training & Fine-Tuning Pipeline: We don't just use basic API wrappers. We train and fine-tune models using high-quality sanitized data, implement Retrieval-Augmented Generation (RAG) for deep context retrieval, and utilize parameter-efficient fine-tuning (PEFT) techniques to create highly specialized, secure AI brains tailored to specific enterprise workflows.
      * Advanced Context Management: Utilizing vector databases to provide AI systems with seamless semantic search and long-term memory persistence.
-     * Custom AI Tooling: Developing sophisticated AI-driven terminal agents (utilizing frameworks like LangGraph) capable of autonomous code editing, execution, and dynamic reasoning for internal engineering teams.
+     * Custom AI Tooling: Developing sophisticated AI-driven terminal agents (utilizing frameworks like LangGraph) capable of autonomous code editing, execution, and dynamic dynamic reasoning for internal engineering teams.
     """
 
 @tool
@@ -140,7 +140,6 @@ tools = [consult_engineering_dept, consult_automation_dept, consult_security_dep
 # ==========================================
 # 4. Initialize the Groq Model
 # ==========================================
-# FIX 2: Restored your exact model name to prevent 500 endpoint errors
 llm = ChatGroq(
     model_name="openai/gpt-oss-20b",  
     temperature=0.6,
@@ -153,18 +152,20 @@ llm_with_tools = llm.bind_tools(tools)
 # ==========================================
 def chatbot(state: State):
     """
-    The central reasoning node. Injects MongoDB Manifest data to maintain state.
+    The central reasoning node. Injects MongoDB Manifest data into the system prompt.
     """
-    # FIX 3: Hardcoded the session ID internally here so LangGraph doesn't crash expecting it from the frontend payload
-    session_id = "default_web_client"
-    active_manifest = fetch_manifest(session_id)
+    session_id = "default_web_client" # Hardcoded for now since frontend doesn't send it
     
-    manifest_context = "No previous context. This is a new client session."
-    if active_manifest:
+    # 1. Ensure we only try to fetch if Mongo is connected to avoid silent crashes
+    try:
+        active_manifest = fetch_manifest(session_id)
         manifest_context = f"""
         PREVIOUS CLIENT INTENT: {active_manifest.get('client_intent', 'Unknown')}
         TECHNICAL REQUIREMENTS LOGGED: {active_manifest.get('technical_requirements', 'None')}
-        """
+        """ if active_manifest else "No previous context. This is a new client session."
+    except Exception as e:
+        print(f"MongoDB Error: {e}")
+        manifest_context = "Memory temporarily offline."
 
     # 2. Refined System Prompt
     system_prompt = SystemMessage(
@@ -191,17 +192,22 @@ def chatbot(state: State):
         4. TONE & AUTHORITY: Maintain a premium, authoritative, and deeply empathetic tone. Explain the *why* behind our engineering decisions clearly and simply."""
     )
     
+    # Prepend the system prompt to the messages array
     messages_to_process = [system_prompt] + state["messages"]
+    
+    # Invoke the model
     response = llm_with_tools.invoke(messages_to_process)
     
-    # 3. Update the memory silently with crash protection logic
-    content_str = str(response.content) if response.content else "Executing internal tool..."
-    
-    generate_and_store_manifest(
-        session_id=session_id,
-        chat_history=f"Last AI Action: {content_str[:50]}...",
-        current_intent="Actively engaged in technical consultation"
-    )
+    # 3. Safely update the memory
+    try:
+        content_str = str(response.content) if response.content else "Executing internal tool..."
+        generate_and_store_manifest(
+            session_id=session_id,
+            chat_history=f"Last AI Action: {content_str[:50]}...",
+            current_intent="Actively engaged in technical consultation"
+        )
+    except Exception as e:
+         print(f"Failed to update manifest: {e}")
     
     return {"messages": [response]}
 
