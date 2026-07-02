@@ -3,6 +3,7 @@ import csv
 from datetime import datetime
 from typing import Annotated
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 from langchain_groq import ChatGroq
 from langchain_core.tools import tool
@@ -12,12 +13,48 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 from langgraph.prebuilt import ToolNode, tools_condition
 
-# 1. Load the Groq API key from .env
+# ==========================================
+# 1. MongoDB Connection & Manifest Logic
+# ==========================================
 load_dotenv()
 
+MONGO_URI = os.getenv("MONGO_URI")
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["chidama_brain"]
+manifest_collection = db["handover_manifests"]
+
+def generate_and_store_manifest(session_id: str, chat_history: str, current_intent: str):
+    """
+    Compiles a highly structured state summary rather than a messy chat log.
+    This manifest can be pasted into new windows to instantly restore AI context.
+    """
+    manifest_data = {
+        "session_id": session_id,
+        "client_intent": current_intent,
+        "technical_requirements": "Pending...", 
+        "recommended_services": "Pending...",  
+        "chat_context": chat_history,
+        "last_updated": datetime.utcnow()
+    }
+    
+    # Upsert: Update the existing manifest if it exists, or create a new one
+    manifest_collection.update_one(
+        {"session_id": session_id},
+        {"$set": manifest_data},
+        upsert=True
+    )
+    return manifest_data
+
+def fetch_manifest(session_id: str):
+    """Retrieves the structured manifest for seamless context handover."""
+    return manifest_collection.find_one({"session_id": session_id})
+
+# ==========================================
 # 2. Define the Agent's Memory State
+# ==========================================
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
+    session_id: str  # Added to track sessions in MongoDB
 
 # ==========================================
 # 3. CHIDAMA TECH DEPARTMENTAL TOOLS
@@ -104,7 +141,7 @@ tools = [consult_engineering_dept, consult_automation_dept, consult_security_dep
 # 4. Initialize the Groq Model
 # ==========================================
 llm = ChatGroq(
-    model_name="openai/gpt-oss-20b", 
+    model_name="llama3-70b-8192",  # Ensure this points to your preferred model
     temperature=0.6,
 )
 
@@ -115,36 +152,54 @@ llm_with_tools = llm.bind_tools(tools)
 # ==========================================
 def chatbot(state: State):
     """
-    The central reasoning node. Contains the dynamic persona instructions.
+    The central reasoning node. Injects MongoDB Manifest data to maintain state.
     """
+    # 1. Fetch memory state
+    session_id = state.get("session_id", "default_web_client")
+    active_manifest = fetch_manifest(session_id)
+    
+    manifest_context = "No previous context. This is a new client session."
+    if active_manifest:
+        manifest_context = f"""
+        PREVIOUS CLIENT INTENT: {active_manifest.get('client_intent', 'Unknown')}
+        TECHNICAL REQUIREMENTS LOGGED: {active_manifest.get('technical_requirements', 'None')}
+        """
+
+    # 2. Refined System Prompt
     system_prompt = SystemMessage(
-        content="""You are the Lead Solutions Architect and Senior Security Engineer for Chidama Tech Partners LLC.
+        content=f"""You are the Lead Solutions Architect and Senior Security Engineer for Chidama Tech Partners LLC.
         Your job is to act as an authoritative technical consultant for potential clients. You are brilliant, confident, and focused on business value. 
         You must infer the user’s true intent, regardless of typos or vague language.
 
+        -- ACTIVE HANDOVER MANIFEST CONTEXT --
+        {manifest_context}
+        (Review this context so you do not repeat yourself or forget what the client previously asked for.)
+
         -- CRITICAL INSTRUCTIONS --
 
-        1. TOOL USAGE: You do NOT memorize company facts. If the user asks about engineering, automation, AI, or security, you MUST use the corresponding departmental tool (e.g., `consult_security_dept`). If a user gives their name and email, you MUST use `log_lead`.
+        1. FORMATTING & HTML RULES (STRICT): You must NEVER output raw HTML tags like <br>. Use standard Markdown (e.g., proper lists, tables, bold text) for ALL formatting. 
+        
+        2. TOOL USAGE: You do NOT memorize company facts. If the user asks about engineering, automation, AI, or security, you MUST use the corresponding departmental tool (e.g., `consult_security_dept`). If a user gives their name and email, you MUST use `log_lead`.
 
-        2. PIVOT & CROSS-SELL DYNAMICS (READ CAREFULLY):
-           You must analyze the user's technical knowledge and goals to determine your sales approach.
+        3. PIVOT & CROSS-SELL DYNAMICS (NO HARD SELLING):
+           - Adopt a consultative "Trusted Advisor" persona.
+           - Address the user's specific query first. 
+           - ONLY recommend the B2B Lead Printer Pipeline if the user explicitly asks for sales, marketing, or lead generation solutions. Do not push it generically.
+           - Recommend complimentary services naturally as "best practices" (e.g., if they want a web app built, gently advise that a security audit is standard protocol).
 
-           * SITUATION A (TECHNICAL USER): If the user sounds technical (e.g., asks about React architecture, specific pentesting tools, RAG pipelines, or uses precise engineering terms):
-             - Adopt the TRUSTED ADVISOR persona (Medium Aggression).
-             - Address their technical query professionally.
-             - Immediately cross-sell a *logical, technically necessary* complimentary service as a required "best practice." (e.g., If they ask for dashboard development, emphasize that a pre-launch OWASP Top 10 security audit is mandatory Chidama Tech protocol. If they ask about AI, suggest pairing it with our data ETL pipelines to feed the model clean data).
-
-           * SITUATION B (NON-TECHNICAL/BUSINESS USER): If the user sounds non-technical, vague, or expresses a generic business goal (e.g., "I need a website," "I nid more sales," "I want an app," or vague inquiries about SEO/ads):
-             - VALIDATE: Agree wholeheartedly that a premium, custom website is absolutely essential for establishing professionalism, building trust, and acting as a high-end digital portfolio. 
-             - PIVOT FROM ADS: Gently explain that while a great website builds trust, relying on standard Facebook ads or SEO for traffic is often slow and expensive.
-             - INTRODUCE THE LEAD PRINTER: Pitch the **B2B Lead Printer Pipeline** as the superior engineering solution for actual business growth.
-             - DEMYSTIFY (CRITICAL): Because the user is non-technical, you MUST explain the Lead Printer in simple, plain English. Explain that instead of waiting for ad clicks, we build an automated software assistant that actively hunts down their exact target decision-makers, finds their direct contact info, and puts the client's business directly in their inbox.
-
-        3. TONE & AUTHORITY: Maintain a premium, authoritative, and deeply empathetic tone. Explain the *why* behind our engineering decisions clearly and simply."""
+        4. TONE & AUTHORITY: Maintain a premium, authoritative, and deeply empathetic tone. Explain the *why* behind our engineering decisions clearly and simply."""
     )
     
     messages_to_process = [system_prompt] + state["messages"]
     response = llm_with_tools.invoke(messages_to_process)
+    
+    # 3. Update the memory silently
+    generate_and_store_manifest(
+        session_id=session_id,
+        chat_history=f"Last AI Action: {response.content[:50]}...",
+        current_intent="Actively engaged in technical consultation"
+    )
+    
     return {"messages": [response]}
 
 # ==========================================
