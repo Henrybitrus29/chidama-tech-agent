@@ -141,7 +141,7 @@ tools = [consult_engineering_dept, consult_automation_dept, consult_security_dep
 # 4. Initialize the Groq Model
 # ==========================================
 llm = ChatGroq(
-    model_name="llama3-70b-8192",  # Ensure this points to your preferred model
+    model_name="llama3-70b-8192",  
     temperature=0.6,
 )
 
@@ -193,10 +193,12 @@ def chatbot(state: State):
     messages_to_process = [system_prompt] + state["messages"]
     response = llm_with_tools.invoke(messages_to_process)
     
-    # 3. Update the memory silently
+    # 3. Update the memory silently with crash protection logic
+    content_str = str(response.content) if response.content else "Executing internal tool..."
+    
     generate_and_store_manifest(
         session_id=session_id,
-        chat_history=f"Last AI Action: {response.content[:50]}...",
+        chat_history=f"Last AI Action: {content_str[:50]}...",
         current_intent="Actively engaged in technical consultation"
     )
     
