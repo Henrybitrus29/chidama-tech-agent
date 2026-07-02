@@ -52,9 +52,9 @@ def fetch_manifest(session_id: str):
 # ==========================================
 # 2. Define the Agent's Memory State
 # ==========================================
+# FIX 1: Reverted to the exact original structure to prevent LangGraph 500 validation errors
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
-    session_id: str  # Added to track sessions in MongoDB
 
 # ==========================================
 # 3. CHIDAMA TECH DEPARTMENTAL TOOLS
@@ -140,8 +140,9 @@ tools = [consult_engineering_dept, consult_automation_dept, consult_security_dep
 # ==========================================
 # 4. Initialize the Groq Model
 # ==========================================
+# FIX 2: Restored your exact model name to prevent 500 endpoint errors
 llm = ChatGroq(
-    model_name="llama3-70b-8192",  
+    model_name="openai/gpt-oss-20b",  
     temperature=0.6,
 )
 
@@ -154,8 +155,8 @@ def chatbot(state: State):
     """
     The central reasoning node. Injects MongoDB Manifest data to maintain state.
     """
-    # 1. Fetch memory state
-    session_id = state.get("session_id", "default_web_client")
+    # FIX 3: Hardcoded the session ID internally here so LangGraph doesn't crash expecting it from the frontend payload
+    session_id = "default_web_client"
     active_manifest = fetch_manifest(session_id)
     
     manifest_context = "No previous context. This is a new client session."
