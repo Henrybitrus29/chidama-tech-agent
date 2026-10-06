@@ -1,7 +1,7 @@
 // The only file you need to edit to personalise the site.
 window.SITE_CONFIG = {
   name: "Henry",
-  api: "https://YOUR-BACKEND.onrender.com",      // your Render URL, no trailing slash
+  api: "https://chidama-tech-agent.onrender.com",      // your Render URL, no trailing slash
   email: "you@example.com",
   upwork: "https://www.upwork.com/freelancers/~YOUR-ID",
   github: "https://github.com/Henrybitrus29",
