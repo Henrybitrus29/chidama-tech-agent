@@ -1,0 +1,4 @@
+# Only for RETRIEVER=hybrid (embeddings) and PDF knowledge files
+fastembed>=0.3
+numpy>=1.26
+pypdf>=4.0

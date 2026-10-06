@@ -1,0 +1,40 @@
+{
+  "business_name": "Brightside Solar",
+  "assistant_name": "Sunny",
+  "about": "Brightside Solar installs rooftop solar for homes and small businesses in the Houston area. This is a demo business with fictional data.",
+  "welcome_message": "Hi, I'm Sunny, Brightside Solar's virtual assistant. Ask me about pricing, how installation works, warranties or booking a free site assessment.",
+  "suggested_questions": [
+    "How much does an 8 kW system cost?",
+    "How long does installation take?",
+    "What does the warranty cover?",
+    "Book a free site assessment"
+  ],
+  "timezone": "America/Chicago",
+  "booking": {
+    "enabled": true,
+    "slot_minutes": 45,
+    "days_ahead": 45,
+    "min_notice_hours": 24,
+    "topics": ["Free site assessment", "System design review", "Existing-customer support"],
+    "hours": {
+      "mon": ["09:00", "17:00"], "tue": ["09:00", "17:00"], "wed": ["09:00", "17:00"],
+      "thu": ["09:00", "17:00"], "fri": ["09:00", "17:00"], "sat": ["10:00", "14:00"]
+    }
+  },
+  "synonyms": {
+    "roof": ["rooftop"],
+    "panel": ["module"],
+    "blackout": ["outage", "power cut"],
+    "battery": ["storage", "backup"],
+    "loan": ["financing", "finance"],
+    "install": ["installation", "installer"],
+    "permit": ["paperwork", "filing", "application"],
+    "assessment": ["survey", "inspection", "visit"]
+  },
+  "extra_rules": [
+    "Never quote a firm price. Prices in the documents are estimates; the final quote comes after a site assessment.",
+    "Do not give tax, legal or financial advice. If asked about incentives, say a Brightside advisor explains what applies at quote time."
+  ],
+  "handoff_text": "A Brightside team member will email you within one business day.",
+  "privacy_notice": "This demo chat is handled by an AI service. Please do not share sensitive personal information."
+}
