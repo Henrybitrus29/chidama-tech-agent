@@ -1,0 +1,8 @@
+.env
+*.local.json
+__pycache__/
+*.pyc
+.venv/
+evals/results/
+.cache/
+node_modules/
