@@ -57,9 +57,15 @@ def create_app(settings: Settings | None = None, runtime: AgentRuntime | None = 
     ip_day_limiter = RateLimiter(settings.rate_limit_ip_per_day, window_seconds=86400.0)
     global_limiter = RateLimiter(settings.daily_turn_cap, window_seconds=86400.0, max_keys=4)
 
-    if settings.allowed_origins:
-        app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins), allow_credentials=False,
-                           allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type"], max_age=600)
+    # Allow all origins, methods, and headers for the public chat widget
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        max_age=600,
+    )
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
@@ -87,6 +93,10 @@ def create_app(settings: Settings | None = None, runtime: AgentRuntime | None = 
         return {"business_name": t.business_name, "assistant_name": t.assistant_name, "welcome_message": t.welcome_message,
                 "suggested_questions": list(t.suggested_questions), "booking_enabled": t.booking.enabled,
                 "privacy_notice": t.privacy_notice}
+
+    @app.options("/api/chat")
+    def chat_options():
+        return JSONResponse({"status": "ok"})
 
     @app.post("/api/chat")
     def chat(req: ChatRequest, request: Request):
